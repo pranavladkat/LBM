@@ -3,7 +3,7 @@ CONFIG += console
 CONFIG -= app_bundle
 CONFIG -= qt
 
-SOURCES += main.cpp
+SOURCES += cavity_flow.cpp
 
 QMAKE_CXXFLAGS += -std=c++11
 
