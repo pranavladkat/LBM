@@ -48,6 +48,10 @@ void compute_f_equilibrium(const vector<vector<vector<double>>>& f,
                            const vector<vector<double>> v,
                            vector<vector<vector<double>>>& f_eq);
 
+void collision(const vector<vector<vector<double>>>& f_str,
+               const vector<vector<vector<double>>>& f_eq,
+               vector<vector<vector<double>>>& f);
+
 
 int main()
 {
@@ -78,6 +82,8 @@ int main()
     compute_macroscopic_variables(f_str,rho,u,v);
 
     compute_f_equilibrium(f,rho,u,v,f_eq);
+
+    collision(f_str,f_eq,f);
 
     cout << "Hello World!" << endl;
     return 0;
@@ -283,5 +289,19 @@ void compute_f_equilibrium(const vector<vector<vector<double>>>& f,
 
 
 
+void collision(const vector<vector<vector<double>>>& f_str,
+               const vector<vector<vector<double>>>& f_eq,
+               vector<vector<vector<double>>>& f)
+{
 
+    for(size_t i = 0; i < f.size(); i++){
+        for(size_t j = 0; j < f[i].size(); j++){
+            for(size_t k = 0; k < 9; k++){
+
+                f[i][j][k] = f_str[i][j][k] - (f_str[i][j][k] - f_eq[i][j][k]) / tau;
+            }
+        }
+    }
+
+}
 
