@@ -1,5 +1,6 @@
 #include <iostream>
 #include <vector>
+#include <cassert>
 
 using namespace std;
 
@@ -19,13 +20,16 @@ const vector<vector<double>> e = {{0,0},{1,0},{0,1},{-1,0},{0,-1},{1,1},{-1,1},{
 
 
 
-// initialize f, u, v
+// initialize f, u
 void initialize_variables(vector<vector<vector<double>>>& f,
                           vector<vector<double>>& rho,
                           vector<vector<double>>& u);
 
 //bonunday condition functions
-vector<double> BottomBC (const vector<vector<vector<double>>>& f);
+void BottomBC (vector<double>& f);
+void LeftBC   (vector<double>& f);
+void RightBC  (vector<double>& f);
+void TopBC    (vector<double>& f);
 
 
 int main()
@@ -81,9 +85,38 @@ void initialize_variables(vector<vector<vector<double>>>& f,
 }
 
 
+void BottomBC (vector<double>& f){
+
+    assert(f.size() == 9);
+    f[2] = f[4];
+    f[5] = f[7];
+    f[6] = f[8];
+}
 
 
+void LeftBC   (vector<double>& f){
 
+    assert(f.size() == 9);
+    f[1] = f[3];
+    f[5] = f[7];
+    f[8] = f[6];
+}
 
+void RightBC  (vector<double>& f){
 
+    assert(f.size() == 9);
+    f[3] = f[1];
+    f[6] = f[8];
+    f[7] = f[5];
+}
 
+void TopBC(vector<double> &f){
+
+    assert(f.size() == 9);
+
+    double rho = f[0] + f[1] + f[3] + 2 * (f[2] + f[5] + f[6]);
+
+    f[4] = f[2];
+    f[7] = 0.5*(f[1] - f[3] + 2*f[5] - rho*u_lid);
+    f[8] = f[6] + 0.5*(f[3] - f[1] + rho*u_lid);
+}
