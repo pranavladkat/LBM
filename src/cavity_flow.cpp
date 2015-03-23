@@ -26,6 +26,7 @@ void initialize_variables(vector<vector<vector<double>>>& f,
                           vector<vector<double>>& u);
 
 //bonunday condition functions
+void apply_boundary_conditions(vector<vector<vector<double>>>& f);
 void BottomBC (vector<double>& f);
 void LeftBC   (vector<double>& f);
 void RightBC  (vector<double>& f);
@@ -55,6 +56,7 @@ int main()
     // initialize
     initialize_variables(f,rho,u);
 
+    apply_boundary_conditions(f);
 
 
     cout << "Hello World!" << endl;
@@ -83,6 +85,45 @@ void initialize_variables(vector<vector<vector<double>>>& f,
         }
     }
 }
+
+
+void apply_boundary_conditions(vector<vector<vector<double>>>& f){
+
+    //apply bottom bc
+    for(size_t i = 0; i < f.size(); i++){
+        vector<double>& boundary_node = f[i][0];
+        BottomBC(boundary_node);
+    }
+
+    //apply left bc
+    for(size_t i = 0; i <f[0].size(); i++){
+        vector<double>& boundary_node = f[0][i];
+        LeftBC(boundary_node);
+    }
+
+    //apply right bc
+    for(size_t i = 0; i < f[f.size()-1].size(); i++){
+        vector<double>& boundary_node = f[f.size()-1][i];
+        RightBC(boundary_node);
+    }
+
+    //apply top bc
+    for(size_t i = 0; i < f.size(); i++){
+        vector<double>& boundary_node = f[i][f[0].size()-1];
+        TopBC(boundary_node);
+    }
+
+//    for(size_t i = 0; i < f.size(); i++){
+//        for(size_t j = 0; j < f[i].size(); j++){
+//            for(size_t k = 0; k < 9; k++)
+//            cout << f[i][j][k] << "  ";
+//            cout << endl;
+//        }
+//    }
+
+}
+
+
 
 
 void BottomBC (vector<double>& f){
