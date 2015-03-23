@@ -32,6 +32,9 @@ void LeftBC   (vector<double>& f);
 void RightBC  (vector<double>& f);
 void TopBC    (vector<double>& f);
 
+// streaming function
+void streaming_step(vector<vector<vector<double>>>& f, vector<vector<vector<double>>>& f_str);
+
 
 int main()
 {
@@ -56,7 +59,8 @@ int main()
     // initialize
     initialize_variables(f,rho,u);
 
-    apply_boundary_conditions(f);
+    // stream
+    streaming_step(f,f_str);
 
 
     cout << "Hello World!" << endl;
@@ -84,6 +88,8 @@ void initialize_variables(vector<vector<vector<double>>>& f,
                 u[i][j] = u_lid;
         }
     }
+
+    apply_boundary_conditions(f);
 }
 
 
@@ -102,7 +108,7 @@ void apply_boundary_conditions(vector<vector<vector<double>>>& f){
     }
 
     //apply right bc
-    for(size_t i = 0; i < f[f.size()-1].size(); i++){
+    for(size_t i = 0; i < f[0].size(); i++){
         vector<double>& boundary_node = f[f.size()-1][i];
         RightBC(boundary_node);
     }
@@ -160,4 +166,42 @@ void TopBC(vector<double> &f){
     f[4] = f[2];
     f[7] = 0.5*(f[1] - f[3] + 2*f[5] - rho*u_lid);
     f[8] = f[6] + 0.5*(f[3] - f[1] + rho*u_lid);
+}
+
+
+void streaming_step(vector<vector<vector<double>>>& f, vector<vector<vector<double>>>& f_str){
+
+    for(size_t i = 0; i < f.size(); i++){
+        for(size_t j = 0; j < f[i].size(); j++){
+
+            f_str[i][j][0] = f[i][j][0];
+
+            if(i > 0)
+                f_str[i][j][1] = f[i-1][j][1];
+
+            if(j > 0)
+                f_str[i][j][2] = f[i][j-1][2];
+
+            if(i < f.size()-1)
+                f_str[i][j][3] = f[i+1][j][3];
+
+            if(j < f[i].size()-1)
+                f_str[i][j][4] = f[i][j+1][4];
+
+            if(i > 0 && j > 0)
+                f_str[i][j][5] = f[i-1][j-1][5];
+
+            if(i < f.size()-1 && j > 0)
+                f_str[i][j][6] = f[i+1][j-1][6];
+
+            if(i < f.size()-1 && j < f[i].size()-1)
+                f_str[i][j][7] = f[i+1][j+1][7];
+
+            if(i > 0 &&  j < f[i].size()-1)
+                f_str[i][j][8] = f[i-1][j+1][8];
+        }
+    }
+
+    apply_boundary_conditions(f_str);
+
 }
