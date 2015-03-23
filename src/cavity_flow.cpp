@@ -42,6 +42,11 @@ void compute_macroscopic_variables(const vector<vector<vector<double>>>& f,
                                    vector<vector<double>>& v);
 
 // compute equilibrium distribution function
+void compute_f_equilibrium(const vector<vector<vector<double>>>& f,
+                           const vector<vector<double>> rho,
+                           const vector<vector<double>> u,
+                           const vector<vector<double>> v,
+                           vector<vector<vector<double>>>& f_eq);
 
 
 int main()
@@ -72,7 +77,7 @@ int main()
 
     compute_macroscopic_variables(f_str,rho,u,v);
 
-
+    compute_f_equilibrium(f,rho,u,v,f_eq);
 
     cout << "Hello World!" << endl;
     return 0;
@@ -224,7 +229,6 @@ void compute_macroscopic_variables(const vector<vector<vector<double>>>& f,
                                    vector<vector<double>>& u,
                                    vector<vector<double>>& v)
 {
-
     for(size_t i = 0; i < f.size(); i++){
         for(size_t j = 0; j < f[i].size(); j++){
 
@@ -242,9 +246,41 @@ void compute_macroscopic_variables(const vector<vector<vector<double>>>& f,
             v[i][j] /= rho[i][j];
         }
     }
+}
 
+
+
+void compute_f_equilibrium(const vector<vector<vector<double>>>& f,
+                           const vector<vector<double>> rho,
+                           const vector<vector<double>> u,
+                           const vector<vector<double>> v,
+                           vector<vector<vector<double>>>& f_eq)
+{
+
+    for(size_t i = 0; i < f.size(); i++){
+        for(size_t j = 0; j < f[i].size(); j++){
+
+            const double& u_eq = u[i][j];
+            const double& v_eq = v[i][j];
+
+            double U_square = u_eq*u_eq + v_eq*v_eq;
+
+            f_eq[i][j][0] = w[0] * rho[i][j] * ( 1.0 - 1.5*U_square );
+
+            for(size_t k = 1; k < 9; k++){
+
+                double e_dot_u        = e[k][0] * u_eq + e[k][1] * v_eq;
+                double e_dot_u_square = e_dot_u * e_dot_u;
+
+                f_eq[i][j][k] = w[k] * rho[i][j] * (1 + 3*e_dot_u + 4.5*e_dot_u_square - 1.5*U_square);
+
+            }
+
+        }
+    }
 
 }
+
 
 
 
