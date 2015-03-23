@@ -35,6 +35,14 @@ void TopBC    (vector<double>& f);
 // streaming function
 void streaming_step(vector<vector<vector<double>>>& f, vector<vector<vector<double>>>& f_str);
 
+// calculate rho, u, v
+void compute_macroscopic_variables(const vector<vector<vector<double>>>& f,
+                                   vector<vector<double>>& rho,
+                                   vector<vector<double>>& u,
+                                   vector<vector<double>>& v);
+
+// compute equilibrium distribution function
+
 
 int main()
 {
@@ -61,6 +69,9 @@ int main()
 
     // stream
     streaming_step(f,f_str);
+
+    compute_macroscopic_variables(f_str,rho,u,v);
+
 
 
     cout << "Hello World!" << endl;
@@ -203,5 +214,38 @@ void streaming_step(vector<vector<vector<double>>>& f, vector<vector<vector<doub
     }
 
     apply_boundary_conditions(f_str);
+}
+
+
+
+
+void compute_macroscopic_variables(const vector<vector<vector<double>>>& f,
+                                   vector<vector<double>>& rho,
+                                   vector<vector<double>>& u,
+                                   vector<vector<double>>& v)
+{
+
+    for(size_t i = 0; i < f.size(); i++){
+        for(size_t j = 0; j < f[i].size(); j++){
+
+            rho[i][j] = 0;
+            u  [i][j] = 0;
+            v  [i][j] = 0;
+
+            for(size_t k = 0; k < 9; k++){
+                rho[i][j] += f[i][j][k];
+                u  [i][j] += f[i][j][k] * e[k][0];
+                v  [i][j] += f[i][j][k] * e[k][1];
+            }
+
+            u[i][j] /= rho[i][j];
+            v[i][j] /= rho[i][j];
+        }
+    }
+
 
 }
+
+
+
+
