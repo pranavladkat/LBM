@@ -2,17 +2,17 @@
 #include <vector>
 #include <cassert>
 #include <fstream>
+#include <cmath>
 
 using namespace std;
 
-const int IMAX = 50;
+const int IMAX = 100;
 const int JMAX = IMAX;
 
 const double tau = 2./3.;
-const double Re = 50;
+const double Re = 500;
 
 const double u_lid = Re*(tau-0.5)/(3.*(IMAX-1.));
-
 
 // directional weights for f_eq (for D2Q9)
 const vector<double> w = {4./9.,1./9.,1./9.,1./9.,1./9.,1./36.,1./36.,1./36.,1./36.};
@@ -57,6 +57,8 @@ void write_output_vtk(const vector<vector<double>>& rho,
                       const vector<vector<double>>& v,
                       int iteration);
 
+double compute_norm(const vector<vector<double>>& vec, const vector<vector<double>>& vec_old);
+
 
 int main()
 {
@@ -66,6 +68,11 @@ int main()
     vector<vector<double>>         rho     (IMAX,vector<double>(JMAX,0));
     vector<vector<double>>         u       (IMAX,vector<double>(JMAX,0));
     vector<vector<double>>         v       (IMAX,vector<double>(JMAX,0));
+    vector<vector<double>>         rho_old (IMAX,vector<double>(JMAX,0));
+    vector<vector<double>>         u_old   (IMAX,vector<double>(JMAX,0));
+    vector<vector<double>>         v_old   (IMAX,vector<double>(JMAX,0));
+
+    double norm;
 
     // print setup values
     cout << "Reynolds number = " << Re << endl;
@@ -76,7 +83,7 @@ int main()
     // initialize
     initialize_variables(f,rho,u);
 
-    for(int i = 0; i < 1000; i++){
+    for(int i = 0; i < 100000; i++){
 
         // stream
         streaming_step(f);
@@ -86,6 +93,23 @@ int main()
         compute_f_equilibrium(f,rho,u,v,f_eq);
 
         collision(f_eq,f);
+
+        if((i+1)%1000 == 0){
+            rho_old = rho;
+            u_old   = u;
+            v_old   = v;
+        }
+        if(i%1000 == 0){
+            double norm_rho = compute_norm(rho,rho_old);
+            double norm_u   = compute_norm(u,u_old);
+            double norm_v   = compute_norm(v,v_old);
+            norm = min(norm_rho,min(norm_u,norm_v));
+            cout << scientific << i << " : error = " << norm << endl;
+
+            if (i > 0 && norm < 1e-4)
+                break;
+        }
+
 
     }
 
@@ -302,16 +326,25 @@ void collision(const vector<vector<vector<double>>>& f_eq,
                vector<vector<vector<double>>>& f)
 {
 
-    for(size_t i = 0; i < f.size(); i++){
-        for(size_t j = 0; j < f[i].size(); j++){
-            for(size_t k = 0; k < 9; k++){
-
+    for(size_t i = 0; i < f.size(); i++)
+        for(size_t j = 0; j < f[i].size(); j++)
+            for(size_t k = 0; k < 9; k++)
                 f[i][j][k] -= (f[i][j][k] - f_eq[i][j][k]) / tau;
-            }
-        }
-    }
 
 }
+
+
+double compute_norm(const vector<vector<double>>& vec, const vector<vector<double>>& vec_old){
+
+    double norm = 0;
+
+    for(size_t i = 0; i < vec.size(); i++)
+        for(size_t j = 0; j < vec[0].size(); j++)
+            norm += fabs(vec[i][j] - vec_old[i][j]);
+
+    return sqrt(norm);
+}
+
 
 
 void write_output_vtk(const vector<vector<double>>& rho,

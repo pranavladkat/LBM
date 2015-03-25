@@ -9,3 +9,5 @@ QMAKE_CXXFLAGS += -std=c++11
 
 include(deployment.pri)
 qtcAddDeployment()
+
+QMAKE_CFLAGS_RELEASE += -O3
