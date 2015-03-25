@@ -1,14 +1,15 @@
 #include <iostream>
 #include <vector>
 #include <cassert>
+#include <fstream>
 
 using namespace std;
 
-const int IMAX = 10;
+const int IMAX = 50;
 const int JMAX = IMAX;
 
 const double tau = 2./3.;
-const double Re = 100;
+const double Re = 50;
 
 const double u_lid = Re*(tau-0.5)/(3.*(IMAX-1.));
 
@@ -33,7 +34,7 @@ void RightBC  (vector<double>& f);
 void TopBC    (vector<double>& f);
 
 // streaming function
-void streaming_step(vector<vector<vector<double>>>& f, vector<vector<vector<double>>>& f_str);
+void streaming_step(vector<vector<vector<double>>>& f);
 
 // calculate rho, u, v
 void compute_macroscopic_variables(const vector<vector<vector<double>>>& f,
@@ -48,24 +49,23 @@ void compute_f_equilibrium(const vector<vector<vector<double>>>& f,
                            const vector<vector<double>> v,
                            vector<vector<vector<double>>>& f_eq);
 
-void collision(const vector<vector<vector<double>>>& f_str,
-               const vector<vector<vector<double>>>& f_eq,
+void collision(const vector<vector<vector<double>>>& f_eq,
                vector<vector<vector<double>>>& f);
+
+void write_output_vtk(const vector<vector<double>>& rho,
+                      const vector<vector<double>>& u,
+                      const vector<vector<double>>& v,
+                      int iteration);
 
 
 int main()
 {
     // define variables
     vector<vector<vector<double>>> f       (IMAX,vector<vector<double>>(JMAX,vector<double>(9,0)));
-    vector<vector<vector<double>>> f_str   (IMAX,vector<vector<double>>(JMAX,vector<double>(9,0)));
     vector<vector<vector<double>>> f_eq    (IMAX,vector<vector<double>>(JMAX,vector<double>(9,0)));
     vector<vector<double>>         rho     (IMAX,vector<double>(JMAX,0));
     vector<vector<double>>         u       (IMAX,vector<double>(JMAX,0));
     vector<vector<double>>         v       (IMAX,vector<double>(JMAX,0));
-    vector<vector<double>>         rho_old (IMAX,vector<double>(JMAX,0));
-    vector<vector<double>>         u_old   (IMAX,vector<double>(JMAX,0));
-    vector<vector<double>>         v_old   (IMAX,vector<double>(JMAX,0));
-
 
     // print setup values
     cout << "Reynolds number = " << Re << endl;
@@ -76,14 +76,20 @@ int main()
     // initialize
     initialize_variables(f,rho,u);
 
-    // stream
-    streaming_step(f,f_str);
+    for(int i = 0; i < 1000; i++){
 
-    compute_macroscopic_variables(f_str,rho,u,v);
+        // stream
+        streaming_step(f);
 
-    compute_f_equilibrium(f,rho,u,v,f_eq);
+        compute_macroscopic_variables(f,rho,u,v);
 
-    collision(f_str,f_eq,f);
+        compute_f_equilibrium(f,rho,u,v,f_eq);
+
+        collision(f_eq,f);
+
+    }
+
+    write_output_vtk(rho,u,v,0);
 
     cout << "Hello World!" << endl;
     return 0;
@@ -123,22 +129,22 @@ void apply_boundary_conditions(vector<vector<vector<double>>>& f){
         BottomBC(boundary_node);
     }
 
+    //apply top bc
+    for(size_t i = 0; i < f.size(); i++){
+        vector<double>& boundary_node = f[i][f[0].size()-1];
+        TopBC(boundary_node);
+    }
+
     //apply left bc
-    for(size_t i = 0; i <f[0].size(); i++){
+    for(size_t i = 1; i < f[0].size()-1; i++){
         vector<double>& boundary_node = f[0][i];
         LeftBC(boundary_node);
     }
 
     //apply right bc
-    for(size_t i = 0; i < f[0].size(); i++){
+    for(size_t i = 1; i < f[0].size()-1; i++){
         vector<double>& boundary_node = f[f.size()-1][i];
         RightBC(boundary_node);
-    }
-
-    //apply top bc
-    for(size_t i = 0; i < f.size(); i++){
-        vector<double>& boundary_node = f[i][f[0].size()-1];
-        TopBC(boundary_node);
     }
 
 //    for(size_t i = 0; i < f.size(); i++){
@@ -163,7 +169,7 @@ void BottomBC (vector<double>& f){
 }
 
 
-void LeftBC   (vector<double>& f){
+void LeftBC (vector<double>& f){
 
     assert(f.size() == 9);
     f[1] = f[3];
@@ -179,7 +185,7 @@ void RightBC  (vector<double>& f){
     f[7] = f[5];
 }
 
-void TopBC(vector<double> &f){
+void TopBC(vector<double>& f){
 
     assert(f.size() == 9);
 
@@ -191,40 +197,43 @@ void TopBC(vector<double> &f){
 }
 
 
-void streaming_step(vector<vector<vector<double>>>& f, vector<vector<vector<double>>>& f_str){
+void streaming_step(vector<vector<vector<double>>>& f){
 
-    for(size_t i = 0; i < f.size(); i++){
-        for(size_t j = 0; j < f[i].size(); j++){
+    for(size_t i = f.size()-1; i > 0; i--)
+        for(size_t j = 0; j < f[0].size(); j++)
+            f[i][j][1] = f[i-1][j][1];
 
-            f_str[i][j][0] = f[i][j][0];
+    for(size_t i = 0; i < f.size(); i++)
+        for(size_t j = f[0].size()-1; j > 0; j--)
+            f[i][j][2] = f[i][j-1][2];
 
-            if(i > 0)
-                f_str[i][j][1] = f[i-1][j][1];
+    for(size_t i = 0; i < f.size()-1; i++)
+        for(size_t j = 0; j < f[0].size(); j++)
+            f[i][j][3] = f[i+1][j][3];
 
-            if(j > 0)
-                f_str[i][j][2] = f[i][j-1][2];
+    for(size_t i = 0; i < f.size(); i++)
+        for(size_t j = 0; j < f[0].size()-1; j++)
+            f[i][j][4] = f[i][j+1][4];
 
-            if(i < f.size()-1)
-                f_str[i][j][3] = f[i+1][j][3];
+    for(size_t i = f.size()-1; i >0; i--)
+        for(size_t j = f[0].size()-1; j > 0; j--)
+            f[i][j][5] = f[i-1][j-1][5];
 
-            if(j < f[i].size()-1)
-                f_str[i][j][4] = f[i][j+1][4];
+    for(size_t i = 0; i < f.size()-1; i++)
+        for(size_t j = f[0].size()-1; j > 0; j--)
+            f[i][j][6] = f[i+1][j-1][6];
 
-            if(i > 0 && j > 0)
-                f_str[i][j][5] = f[i-1][j-1][5];
+    for(size_t i = 0; i < f.size()-1; i++)
+        for(size_t j = 0; j < f[0].size()-1; j++)
+            f[i][j][7] = f[i+1][j+1][7];
 
-            if(i < f.size()-1 && j > 0)
-                f_str[i][j][6] = f[i+1][j-1][6];
+    for(size_t i = f.size()-1; i > 0; i--)
+        for(size_t j = 0; j < f[0].size()-1; j++)
+            f[i][j][8] = f[i-1][j+1][8];
 
-            if(i < f.size()-1 && j < f[i].size()-1)
-                f_str[i][j][7] = f[i+1][j+1][7];
 
-            if(i > 0 &&  j < f[i].size()-1)
-                f_str[i][j][8] = f[i-1][j+1][8];
-        }
-    }
+    apply_boundary_conditions(f);
 
-    apply_boundary_conditions(f_str);
 }
 
 
@@ -289,8 +298,7 @@ void compute_f_equilibrium(const vector<vector<vector<double>>>& f,
 
 
 
-void collision(const vector<vector<vector<double>>>& f_str,
-               const vector<vector<vector<double>>>& f_eq,
+void collision(const vector<vector<vector<double>>>& f_eq,
                vector<vector<vector<double>>>& f)
 {
 
@@ -298,10 +306,55 @@ void collision(const vector<vector<vector<double>>>& f_str,
         for(size_t j = 0; j < f[i].size(); j++){
             for(size_t k = 0; k < 9; k++){
 
-                f[i][j][k] = f_str[i][j][k] - (f_str[i][j][k] - f_eq[i][j][k]) / tau;
+                f[i][j][k] -= (f[i][j][k] - f_eq[i][j][k]) / tau;
             }
         }
     }
 
 }
 
+
+void write_output_vtk(const vector<vector<double>>& rho,
+                      const vector<vector<double>>& u,
+                      const vector<vector<double>>& v,
+                      int iteration)
+{
+    string name = "output_" + to_string(iteration) + ".vtk";
+    ofstream ofile (name);
+
+    // vtk preamble
+    ofile << "# vtk DataFile Version 2.0" << endl;
+    ofile << "OUTPUT by LIBM\n";
+    ofile << "ASCII" << endl;
+
+    // write grid
+    ofile << "DATASET RECTILINEAR_GRID" << endl;
+    ofile << "DIMENSIONS " << u.size() << " " << u[0].size() << " 1" << endl;
+    ofile << "X_COORDINATES " << u.size() << " float" << endl;
+    for(size_t i = 0; i < u.size(); i++)
+        ofile << i << "\t";
+    ofile << endl;
+    ofile << "Y_COORDINATES " << u[0].size() << " float" << endl;
+    for(size_t i = 0; i < u[0].size(); i++)
+        ofile << i << "\t";
+    ofile << endl;
+    ofile << "Z_COORDINATES 1 float" << endl;
+    ofile << "0" << endl;
+
+    // point data
+    ofile << "POINT_DATA " << u.size()*u[0].size() << endl;
+
+    // write rho
+    ofile << "SCALARS " << "rho" << " double" << endl;
+    ofile << "LOOKUP_TABLE default" << endl;
+    for(size_t j = 0; j < u[0].size(); j++)
+        for(size_t i = 0; i < u.size(); i++)
+            ofile << rho[i][j] << endl;
+
+    // write u,v
+    ofile << "VECTORS " << "U" << " double" << std::endl;
+    for(size_t j = 0; j < u[0].size(); j++)
+        for(size_t i = 0; i < u.size(); i++)
+            ofile << u[i][j] << "\t" << v[i][j] << "\t 0" << endl;
+
+}
